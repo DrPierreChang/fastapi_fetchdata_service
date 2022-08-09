@@ -1,0 +1,61 @@
+version: '2.2'
+
+services:
+  predict_app:
+    container_name: predict_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - test.env
+    networks:
+      - predict_network
+    ports:
+      - "8000:8000"
+    depends_on:
+      predict_redis:
+        condition: service_healthy
+      predict_postgres_db:
+        condition: service_healthy
+
+  predict_redis:
+    container_name: predict_redis
+    image: redis:6.2.6-alpine
+    expose:
+      - 6379
+    ports:
+      - "9000:6379"
+    networks:
+      - predict_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 20s
+      retries: 100
+
+  predict_postgres_db:
+    container_name: predict_postgres_db
+    image: postgres:latest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=predict_hw
+      - POSTGRES_USER=predict_hw
+      - POSTGRES_PASSWORD=predict_hw
+    expose:
+      - 5432
+    ports:
+      - "5432:5432"
+    networks:
+      - predict_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U predict_hw" ]
+      interval: 5s
+      timeout: 20s
+      retries: 100
+
+networks:
+  predict_network:
+
+volumes:
+  postgres_data:
